@@ -21,22 +21,5 @@ public class AkkaModule implements Module {
 	        .bind(ActorMaterializer.class)
 	        .toInstance(ActorMaterializer.create(actorSystem));
     	
-		
-//		final String property = System.getProperty("config.file", "kilebeat.conf");				
-//		final ValidationResponse validResp = new ConfigurationValidator().isValid(new File(property));		
-//		
-//		if (!validResp.isValid()) {
-//			System.err.println("config.file is INVALID ... exit!!?");
-//			System.exit(-1);
-//		}
-//		
-//		binder
-//			.bind(FileSystemWatcherService.class)
-//			.in(Singleton.class);
-//		
-//		binder
-//			.bind(ExportsConfiguration.class)
-//			.toInstance(validResp.getConfig());
-		
 	}
 }

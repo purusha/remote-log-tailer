@@ -5,11 +5,11 @@ import com.skillbill.at.guice.AkkaModule;
 
 public class StartSystem {
 	public static void main(String[] args) throws Exception {
-		
+
 		Guice
 			.createInjector(new AkkaModule())
 			.getInstance(Application.class)
 			.run();
-		
-    }
+
+	}
 }

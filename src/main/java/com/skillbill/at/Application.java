@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class Application {
-	
+
 	private final Injector injector;
 	private final ActorSystem system;
 
@@ -21,57 +21,32 @@ public class Application {
 		this.injector = injector;
 		this.system = system;
 	}
-	
+
 	public void run() throws Exception {
-		
-		//Add shutdownhook
+
+		// Add shutdownhook
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-	        LOGGER.info("-------------------------------------------------");
-	        LOGGER.info(" STOPPED");
-	        LOGGER.info("-------------------------------------------------");
-			
-            system.terminate();
-        }));
-		
+			LOGGER.info("-------------------------------------------------");
+			LOGGER.info(" STOPPED");
+			LOGGER.info("-------------------------------------------------");
+
+			system.terminate();
+		}));
+
 		system.registerExtension(GuiceExtension.provider);
 
-        //configure Guice
-        final GuiceExtensionImpl guiceExtension = GuiceExtension.provider.get(system);
-        guiceExtension.setInjector(injector);
-                
-//        final File appConf = new File(System.getProperty("config.file", "remote-log.conf"));
-//        final Config load = ConfigFactory.parseFile(appConf);
-        
-		system.actorOf(
-			GuiceActorUtils.makeProps(system, RemoteLoggerTailer.class), "manager"
-		);                
-        
-//        //XXX start only in development environment
-//        system
-//        	.eventStream()
-//        	.subscribe(
-//    	        system.actorOf(
-//	        		GuiceActorUtils.makeProps(system, RetrieveActors.class), "retrieve"
-//	    		), 
-//    			DeadLetter.class
-//			);
-//
-//        //XXX create before watcher because ... manager use watcher internally
-//        system.actorOf(
-//    		GuiceActorUtils.makeProps(system, ExportsManagerActor.class), "manager"
-//		);        
-//        
-//        system.actorOf(
-//    		GuiceActorUtils.makeProps(system, FileSystemWatcherActor.class), "watcher"
-//		);
-//
-//        system.actorOf(
-//    		GuiceActorUtils.makeProps(system, BulkTimeoutActor.class), "bulk-timeout"
-//		);
+		// configure Guice
+		final GuiceExtensionImpl guiceExtension = GuiceExtension.provider.get(system);
+		guiceExtension.setInjector(injector);
 
-        LOGGER.info("-------------------------------------------------");
-        LOGGER.info(" STARTED");
-        LOGGER.info("-------------------------------------------------");
+		// final File appConf = new File(System.getProperty("config.file", "remote-log.conf"));
+		// final Config load = ConfigFactory.parseFile(appConf);
 
-    }
+		system.actorOf(GuiceActorUtils.makeProps(system, RemoteLoggerTailer.class), "manager");
+
+		LOGGER.info("-------------------------------------------------");
+		LOGGER.info(" STARTED");
+		LOGGER.info("-------------------------------------------------");
+
+	}
 }
