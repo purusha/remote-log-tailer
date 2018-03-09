@@ -1,13 +1,11 @@
 package com.skillbill.at;
 
-import java.io.File;
-
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.skillbill.at.akka.RemoteLoggerTailer;
+import com.skillbill.at.guice.GuiceActorUtils;
 import com.skillbill.at.guice.GuiceExtension;
 import com.skillbill.at.guice.GuiceExtensionImpl;
-import com.typesafe.config.Config;
-import com.typesafe.config.ConfigFactory;
 
 import akka.actor.ActorSystem;
 import lombok.extern.slf4j.Slf4j;
@@ -15,18 +13,17 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class Application {
 	
-	private Injector injector;
+	private final Injector injector;
+	private final ActorSystem system;
 
 	@Inject
-	public Application(Injector injector) {
+	public Application(Injector injector, ActorSystem system) {
 		this.injector = injector;
+		this.system = system;
 	}
 	
 	public void run() throws Exception {
 		
-        //create system
-        final ActorSystem system = ActorSystem.create("remote-logger", ConfigFactory.load());        
-        
 		//Add shutdownhook
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 	        LOGGER.info("-------------------------------------------------");
@@ -42,10 +39,12 @@ public class Application {
         final GuiceExtensionImpl guiceExtension = GuiceExtension.provider.get(system);
         guiceExtension.setInjector(injector);
                 
-        final File appConf = new File(System.getProperty("config.file", "remote-log.conf"));
-        final Config load = ConfigFactory.parseFile(appConf);
+//        final File appConf = new File(System.getProperty("config.file", "remote-log.conf"));
+//        final Config load = ConfigFactory.parseFile(appConf);
         
-        
+		system.actorOf(
+			GuiceActorUtils.makeProps(system, RemoteLoggerTailer.class), "manager"
+		);                
         
 //        //XXX start only in development environment
 //        system
