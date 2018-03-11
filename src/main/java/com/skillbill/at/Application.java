@@ -6,6 +6,7 @@ import com.skillbill.at.akka.RemoteLoggerTailer;
 import com.skillbill.at.guice.GuiceActorUtils;
 import com.skillbill.at.guice.GuiceExtension;
 import com.skillbill.at.guice.GuiceExtensionImpl;
+import com.typesafe.config.Config;
 
 import akka.actor.ActorSystem;
 import lombok.extern.slf4j.Slf4j;
@@ -15,11 +16,13 @@ public class Application {
 
 	private final Injector injector;
 	private final ActorSystem system;
+	private final Config config;
 
 	@Inject
-	public Application(Injector injector, ActorSystem system) {
+	public Application(Injector injector, ActorSystem system, Config config) {
 		this.injector = injector;
 		this.system = system;
+		this.config = config;
 	}
 
 	public void run() throws Exception {
@@ -39,10 +42,11 @@ public class Application {
 		final GuiceExtensionImpl guiceExtension = GuiceExtension.provider.get(system);
 		guiceExtension.setInjector(injector);
 
-		// final File appConf = new File(System.getProperty("config.file", "remote-log.conf"));
-		// final Config load = ConfigFactory.parseFile(appConf);
-
-		system.actorOf(GuiceActorUtils.makeProps(system, RemoteLoggerTailer.class), "manager");
+		config.getConfigList("logs").forEach(c -> {
+			system.actorOf(
+				GuiceActorUtils.makeProps(system, RemoteLoggerTailer.class)
+			);			
+		});
 
 		LOGGER.info("-------------------------------------------------");
 		LOGGER.info(" STARTED");

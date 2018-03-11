@@ -1,7 +1,10 @@
 package com.skillbill.at.guice;
 
+import java.io.File;
+
 import com.google.inject.Binder;
 import com.google.inject.Module;
+import com.typesafe.config.Config;
 import com.typesafe.config.ConfigFactory;
 
 import akka.actor.ActorSystem;
@@ -20,6 +23,13 @@ public class AkkaModule implements Module {
         binder
 	        .bind(ActorMaterializer.class)
 	        .toInstance(ActorMaterializer.create(actorSystem));
+        
+		final File appConf = new File(System.getProperty("config.file", "remote-log.conf"));
+		final Config load = ConfigFactory.parseFile(appConf);
+		
+		binder
+			.bind(Config.class)
+			.toInstance(load);        
     	
 	}
 }

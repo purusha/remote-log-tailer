@@ -6,6 +6,7 @@ import java.util.concurrent.CompletionStage;
 import com.google.inject.Inject;
 import com.skillbill.at.connection.ConnectionBuilder;
 import com.skillbill.at.guice.GuiceAbstractActor;
+import com.typesafe.config.Config;
 
 import akka.actor.ActorRef;
 import akka.stream.IOResult;
@@ -21,12 +22,16 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
 	private final Materializer materializer;
 
 	@Inject
-	public RemoteLoggerTailer(Materializer materializer) {
+	public RemoteLoggerTailer(Materializer materializer, Config c) {
 		this.materializer = materializer;
 
 		try {
+			
+			final String sshUser = c.getString("ssh-user");
+			final String sshHost = c.getString("ssh-host");
+			final String remoteFile = c.getString("remote-file");			
 
-			this.proc = new ProcessBuilder("bash", "-c", ConnectionBuilder.connection())
+			this.proc = new ProcessBuilder("bash", "-c", ConnectionBuilder.connection(sshUser, sshHost, remoteFile))
 				.redirectErrorStream(true)
 				.start();
 
@@ -47,8 +52,7 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
 			if (proc != null) {
 				proc.destroy();
 			}
-		} catch (Exception ignore) {
-		}
+		} catch (Exception ignore) { }
 	}
 
 	@Override
@@ -97,6 +101,7 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
 		});
 	}
 
+	//XXX file name MUST be f(x) of Config field !!?
 	private String getPath() {
 		return "/tmp/" + System.currentTimeMillis();
 	}
