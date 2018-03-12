@@ -9,7 +9,9 @@ import com.typesafe.config.ConfigFactory;
 
 import akka.actor.ActorSystem;
 import akka.stream.ActorMaterializer;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public class AkkaModule implements Module {
 	@Override
 	public void configure(Binder binder) {
@@ -25,6 +27,8 @@ public class AkkaModule implements Module {
 	        .toInstance(ActorMaterializer.create(actorSystem));
         
 		final File appConf = new File(System.getProperty("config.file", "remote-log.conf"));
+		LOGGER.info("parsing appConf {} ", appConf.getAbsolutePath());
+		
 		final Config load = ConfigFactory.parseFile(appConf);
 		
 		binder

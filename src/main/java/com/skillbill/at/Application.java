@@ -3,12 +3,13 @@ package com.skillbill.at;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
 import com.skillbill.at.akka.RemoteLoggerTailer;
-import com.skillbill.at.guice.GuiceActorUtils;
 import com.skillbill.at.guice.GuiceExtension;
 import com.skillbill.at.guice.GuiceExtensionImpl;
 import com.typesafe.config.Config;
 
 import akka.actor.ActorSystem;
+import akka.actor.Props;
+import akka.stream.ActorMaterializer;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -43,9 +44,9 @@ public class Application {
 		guiceExtension.setInjector(injector);
 
 		config.getConfigList("logs").forEach(c -> {
-			system.actorOf(
-				GuiceActorUtils.makeProps(system, RemoteLoggerTailer.class)
-			);			
+			system.actorOf(Props.create(
+				RemoteLoggerTailer.class, injector.getInstance(ActorMaterializer.class), new RemoteLoggerTailer.RemoteLoggerFile(c)
+			));			
 		});
 
 		LOGGER.info("-------------------------------------------------");

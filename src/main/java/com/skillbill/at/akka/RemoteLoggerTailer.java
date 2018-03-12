@@ -4,34 +4,33 @@ import java.io.File;
 import java.util.concurrent.CompletionStage;
 
 import com.google.inject.Inject;
-import com.skillbill.at.connection.ConnectionBuilder;
 import com.skillbill.at.guice.GuiceAbstractActor;
+import com.skillbill.at.service.SshConnectionBuilder;
+import com.skillbill.at.service.LocalFileBuilder;
 import com.typesafe.config.Config;
 
 import akka.actor.ActorRef;
+import akka.stream.ActorMaterializer;
 import akka.stream.IOResult;
-import akka.stream.Materializer;
 import akka.stream.javadsl.FileIO;
 import akka.stream.javadsl.StreamConverters;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class RemoteLoggerTailer extends GuiceAbstractActor {
 
-	private Process proc;
-	private final Materializer materializer;
+	private final ActorMaterializer materializer;
+	private final RemoteLoggerFile rlf;
+	private Process proc;	
 
 	@Inject
-	public RemoteLoggerTailer(Materializer materializer, Config c) {
+	public RemoteLoggerTailer(ActorMaterializer materializer, RemoteLoggerFile rlf) {
 		this.materializer = materializer;
+		this.rlf = rlf;
 
 		try {
-			
-			final String sshUser = c.getString("ssh-user");
-			final String sshHost = c.getString("ssh-host");
-			final String remoteFile = c.getString("remote-file");			
-
-			this.proc = new ProcessBuilder("bash", "-c", ConnectionBuilder.connection(sshUser, sshHost, remoteFile))
+			this.proc = new ProcessBuilder("bash", "-c", SshConnectionBuilder.connection(rlf))
 				.redirectErrorStream(true)
 				.start();
 
@@ -63,21 +62,24 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
 
 	@Override
 	public Receive createReceive() {
-		return receiveBuilder().match(StartTail.class, w -> {
-			if (proc.isAlive()) {
-				handler();
-			} else {
-				LOGGER.error("process is not alive");
-				getContext().stop(getSelf());
-			}
-		}).matchAny(o -> {
-			LOGGER.warn("not handled message", o);
-			unhandled(o);
-		}).build();
+		return receiveBuilder()
+			.match(StartTail.class, w -> {
+				if (proc.isAlive()) {
+					handler();
+				} else {
+					LOGGER.error("process is not alive");
+					getContext().stop(getSelf());
+				}
+			})
+			.matchAny(o -> {
+				LOGGER.warn("not handled message", o);
+				unhandled(o);
+			})
+			.build();
 	}
 
 	private void handler() {
-		final String target = getPath();
+		final String target = LocalFileBuilder.getPath(rlf);
 		LOGGER.info("target file is {}", target);
 
 		final CompletionStage<IOResult> stage = StreamConverters.fromInputStream(() -> {
@@ -89,7 +91,7 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
 			);
 
 		stage.thenAccept(action -> {
-			LOGGER.info("terminated batch on {}", getSelf().path());
+			LOGGER.info("terminated batch with {} on {}", action.getError(), getSelf().path());
 			getContext().stop(getSelf());
 		});
 
@@ -101,11 +103,19 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
 		});
 	}
 
-	//XXX file name MUST be f(x) of Config field !!?
-	private String getPath() {
-		return "/tmp/" + System.currentTimeMillis();
-	}
-
 	private static class StartTail { }
+	
+	@Getter
+	public static class RemoteLoggerFile {
+		final String sshUser;
+		final String sshHost;
+		final String remoteFile;
+		
+		public RemoteLoggerFile(Config c) {
+			this.sshUser = c.getString("ssh-user");
+			this.sshHost = c.getString("ssh-host");
+			this.remoteFile = c.getString("remote-file");					
+		}
+	}
 
 }
