@@ -80,7 +80,9 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
             return proc.getInputStream();
         }).map(byteString -> {
             return byteString;
-        }).runWith(FileIO.toFile(new File(target)), materializer);
+        }).runWith(
+            FileIO.toFile(new File(target)), materializer
+        );
 
         stage.thenAccept(action -> {
             LOGGER.info("terminated batch with {} on {}", action.getError(), getSelf().path());
