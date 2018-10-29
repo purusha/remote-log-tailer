@@ -4,6 +4,7 @@ follow remote log file over ssh ... write it locally under path /tmp/_/{ssh-host
 
 example of remote-log.conf
 
+```json
 logs = [
     {
         ssh-user = "user"
@@ -11,6 +12,7 @@ logs = [
         remote-file = "/usr/home/user/service/${MM}/${dd}/local1.log"
     }
 ]
+```
 
 example of placeholder resolved by [SimpleDateFormat](https://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html) are enclosed by '${' and '}'
 
