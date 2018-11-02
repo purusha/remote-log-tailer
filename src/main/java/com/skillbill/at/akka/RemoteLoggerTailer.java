@@ -4,8 +4,8 @@ import java.io.File;
 import java.util.concurrent.CompletionStage;
 import com.google.inject.Inject;
 import com.skillbill.at.guice.GuiceAbstractActor;
-import com.skillbill.at.service.SshConnectionBuilder;
 import com.skillbill.at.service.LocalFileBuilder;
+import com.skillbill.at.service.SshConnectionBuilder;
 import com.typesafe.config.Config;
 import akka.actor.ActorRef;
 import akka.stream.ActorMaterializer;
@@ -28,11 +28,13 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
         this.rlf = rlf;
 
         try {
+            
             this.proc = new ProcessBuilder("bash", "-c", SshConnectionBuilder.connection(rlf))
-                .redirectErrorStream(true).start();
+                .redirectErrorStream(true)
+                .start();
 
             self().tell(new StartTail(), ActorRef.noSender());
-
+            
         } catch (Exception e) {
             LOGGER.error("", e);
             getContext().stop(getSelf());
@@ -60,7 +62,7 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
     @Override
     public Receive createReceive() {
         return receiveBuilder().match(StartTail.class, w -> {
-            if (proc.isAlive()) {
+            if (proc.isAlive()) { // && lo stream è ancora partito (ma non sò come si dice in akkese)
                 handler();
             } else {
                 LOGGER.error("process is not alive");
@@ -83,9 +85,9 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
         }).runWith(
             FileIO.toFile(new File(target)), materializer
         );
-
-        stage.thenAccept(action -> {
-            LOGGER.info("terminated batch with {} on {}", action.getError(), getSelf().path());
+        
+        stage.thenAccept(action -> {            
+            LOGGER.info("terminated batch with {} on {}", action.getError().getMessage(), getSelf().path());
             getContext().stop(getSelf());
         });
 
@@ -111,5 +113,5 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
             this.remoteFile = c.getString("remote-file");
         }
     }
-
+    
 }

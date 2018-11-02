@@ -16,16 +16,22 @@ public class AkkaModule implements Module {
 
         final ActorSystem actorSystem = ActorSystem.create("remote-logger", ConfigFactory.load());
 
-        binder.bind(ActorSystem.class).toInstance(actorSystem);
+        binder
+            .bind(ActorSystem.class)
+            .toInstance(actorSystem);
 
-        binder.bind(ActorMaterializer.class).toInstance(ActorMaterializer.create(actorSystem));
+        binder
+            .bind(ActorMaterializer.class)
+            .toInstance(ActorMaterializer.create(actorSystem));
 
         final File appConf = new File(System.getProperty("config.file", "remote-log.conf"));
-        LOGGER.info("parsing appConf {} ", appConf.getAbsolutePath());
+        LOGGER.info("Using application config: {} ", appConf.getAbsolutePath());
 
         final Config load = ConfigFactory.parseFile(appConf);
 
-        binder.bind(Config.class).toInstance(load);
+        binder
+            .bind(Config.class)
+            .toInstance(load);
 
     }
 }

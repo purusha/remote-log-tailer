@@ -27,15 +27,6 @@ public class Application {
 
     public void run() throws Exception {
 
-        // Add shutdownhook
-        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
-            LOGGER.info("-------------------------------------------------");
-            LOGGER.info(" STOPPED");
-            LOGGER.info("-------------------------------------------------");
-
-            system.terminate();
-        }));
-
         system.registerExtension(GuiceExtension.provider);
 
         // configure Guice
@@ -43,11 +34,19 @@ public class Application {
         guiceExtension.setInjector(injector);
 
         config.getConfigList("logs").forEach(c -> {
-            system.actorOf(Props.create(
-                RemoteLoggerTailer.class,
-                injector.getInstance(ActorMaterializer.class),
-                new RemoteLoggerTailer.RemoteLoggerFile(c)
-            ));
+            system.actorOf(
+                    
+                /*
+                    XXX use Guice instead of Akka Props please !!?
+                 */
+                    
+                Props.create(
+                    RemoteLoggerTailer.class,
+                    injector.getInstance(ActorMaterializer.class),
+                    new RemoteLoggerTailer.RemoteLoggerFile(c)
+                )
+                
+            );
         });
 
         LOGGER.info("-------------------------------------------------");
