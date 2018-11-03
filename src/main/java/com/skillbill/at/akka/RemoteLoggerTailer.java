@@ -1,17 +1,19 @@
 package com.skillbill.at.akka;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.CompletionStage;
 import com.google.inject.Inject;
 import com.skillbill.at.guice.GuiceAbstractActor;
 import com.skillbill.at.service.LocalFileBuilder;
 import com.skillbill.at.service.SshConnectionBuilder;
 import com.typesafe.config.Config;
-import akka.actor.ActorRef;
 import akka.stream.ActorMaterializer;
 import akka.stream.IOResult;
 import akka.stream.javadsl.FileIO;
 import akka.stream.javadsl.StreamConverters;
+import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -19,38 +21,24 @@ import lombok.extern.slf4j.Slf4j;
 public class RemoteLoggerTailer extends GuiceAbstractActor {
 
     private final ActorMaterializer materializer;
-    private final RemoteLoggerFile rlf;
-    private Process proc;
-
+    private final Map<RemoteLoggerFile, Process> state;
+    
     @Inject
-    public RemoteLoggerTailer(ActorMaterializer materializer, RemoteLoggerFile rlf) {
+    public RemoteLoggerTailer(ActorMaterializer materializer) {
         this.materializer = materializer;
-        this.rlf = rlf;
-
-        try {
-            
-            this.proc = new ProcessBuilder("bash", "-c", SshConnectionBuilder.connection(rlf))
-                .redirectErrorStream(true)
-                .start();
-
-            self().tell(new StartTail(), ActorRef.noSender());
-            
-        } catch (Exception e) {
-            LOGGER.error("", e);
-            getContext().stop(getSelf());
-        }
+        this.state = new HashMap<RemoteLoggerTailer.RemoteLoggerFile, Process>();
     }
-
+    
     @Override
     public void postStop() throws Exception {
         super.postStop();
         LOGGER.info("end {} ", getSelf().path());
-
-        try {
-            if (proc != null) {
-                proc.destroy();
-            }
-        } catch (Exception ignore) { }
+        
+        state.values().forEach(proc -> {
+          try {
+              proc.destroy();
+          } catch (Exception ignore) { }            
+        });
     }
 
     @Override
@@ -61,20 +49,38 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
 
     @Override
     public Receive createReceive() {
-        return receiveBuilder().match(StartTail.class, w -> {
-            if (proc.isAlive()) { // && lo stream è ancora partito (ma non sò come si dice in akkese)
-                handler();
-            } else {
-                LOGGER.error("process is not alive");
-                getContext().stop(getSelf());
-            }
-        }).matchAny(o -> {
-            LOGGER.warn("not handled message", o);
-            unhandled(o);
-        }).build();
+        return receiveBuilder()
+            .match(RemoteLoggerFile.class, rlf -> {
+                
+                if (! state.containsKey(rlf)) {
+                    handler(rlf);    
+                }
+                
+            }).matchAny(o -> {
+                LOGGER.warn("not handled message", o);
+                unhandled(o);
+            }).build();
     }
 
-    private void handler() {
+    private void handler(RemoteLoggerFile rlf) {
+        try{
+
+            final Process proc = new ProcessBuilder("bash", "-c", SshConnectionBuilder.connection(rlf))
+                .redirectErrorStream(true)
+                .start();                        
+            
+            if (proc.isAlive()) {
+                runBlueprint(rlf, proc);
+            } else {
+                LOGGER.error("process is not alive");
+            }
+            
+        } catch (Exception e) {
+            LOGGER.error("", e);
+        }
+    }
+
+    private void runBlueprint(RemoteLoggerFile rlf, Process proc) {
         final String target = LocalFileBuilder.getPath(rlf);
         LOGGER.info("target file is {}", target);
 
@@ -88,20 +94,19 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
         
         stage.thenAccept(action -> {            
             LOGGER.info("terminated batch with {} on {}", action.getError().getMessage(), getSelf().path());
-            getContext().stop(getSelf());
         });
 
         stage.exceptionally(e -> {
             LOGGER.error("", e);
-            getContext().stop(getSelf());
 
             return IOResult.createFailed(1, e);
         });
+        
+        state.put(rlf, proc);
     }
 
-    private static class StartTail { }
-
     @Getter
+    @EqualsAndHashCode
     public static class RemoteLoggerFile {
         final String sshUser;
         final String sshHost;

@@ -6,6 +6,7 @@ import com.skillbill.at.akka.RemoteLoggerTailer;
 import com.skillbill.at.guice.GuiceExtension;
 import com.skillbill.at.guice.GuiceExtensionImpl;
 import com.typesafe.config.Config;
+import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
 import akka.stream.ActorMaterializer;
@@ -32,20 +33,21 @@ public class Application {
         // configure Guice
         final GuiceExtensionImpl guiceExtension = GuiceExtension.provider.get(system);
         guiceExtension.setInjector(injector);
-
-        config.getConfigList("logs").forEach(c -> {
-            system.actorOf(
-                    
-                /*
-                    XXX use Guice instead of Akka Props please !!?
-                 */
-                    
-                Props.create(
-                    RemoteLoggerTailer.class,
-                    injector.getInstance(ActorMaterializer.class),
-                    new RemoteLoggerTailer.RemoteLoggerFile(c)
-                )
+        
+        final ActorRef tailer = system.actorOf(            
+            /*
+                XXX use Guice instead of Akka Props please !!?
+             */
                 
+            Props.create(
+                RemoteLoggerTailer.class,
+                injector.getInstance(ActorMaterializer.class)                    
+            )            
+        );
+        
+        config.getConfigList("logs").forEach(c -> {
+            tailer.tell(
+                new RemoteLoggerTailer.RemoteLoggerFile(c), ActorRef.noSender()
             );
         });
 
