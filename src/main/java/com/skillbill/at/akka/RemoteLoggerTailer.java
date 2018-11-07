@@ -15,6 +15,7 @@ import akka.stream.javadsl.FileIO;
 import akka.stream.javadsl.StreamConverters;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -72,7 +73,7 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
             if (proc.isAlive()) {
                 runBlueprint(rlf, proc);
             } else {
-                LOGGER.error("process is not alive");
+                LOGGER.error("process for {} is not alive", rlf);
             }
             
         } catch (Exception e) {
@@ -93,7 +94,7 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
         );
         
         stage.thenAccept(action -> {            
-            LOGGER.info("terminated batch with {} on {}", action.getError().getMessage(), getSelf().path());
+            LOGGER.info("terminated batch with {} on {}", action.getError().getMessage(), rlf);
         });
 
         stage.exceptionally(e -> {
@@ -107,6 +108,7 @@ public class RemoteLoggerTailer extends GuiceAbstractActor {
 
     @Getter
     @EqualsAndHashCode
+    @ToString
     public static class RemoteLoggerFile {
         final String sshUser;
         final String sshHost;
