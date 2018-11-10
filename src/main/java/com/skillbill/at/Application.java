@@ -50,10 +50,25 @@ public class Application {
                 new RemoteLoggerTailer.RemoteLoggerFile(c), ActorRef.noSender()
             );
         });
+        
+        /*
+        
+        CoordinatedShutdown.get(system).addJvmShutdownHook(() ->
+            System.out.println("custom JVM shutdown hook...")
+        );        
+        
+        Runtime.getRuntime().addShutdownHook(new Thread(){
+            @Override
+            public void run() {
+                System.out.println("JVM shutdown hook...");               
+            }
+        });
+        
+        */
 
         LOGGER.info("-------------------------------------------------");
         LOGGER.info(" STARTED");
-        LOGGER.info("-------------------------------------------------");
+        LOGGER.info("-------------------------------------------------");        
 
     }
 }
